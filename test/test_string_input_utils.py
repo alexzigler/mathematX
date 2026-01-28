@@ -58,25 +58,6 @@ def test_consecutive_relationals():
     assert consecutive_relationals('cake=<x') == True
 
 
-def test_alpa_group_interrupted():
-    assert alpha_group_interrupted('') == False
-    assert alpha_group_interrupted('xyz') == False
-    assert alpha_group_interrupted('xyz w+') == False
-    assert alpha_group_interrupted('xyz w  %') == False
-    assert alpha_group_interrupted('x / y / z /  w  %') == False
-    assert alpha_group_interrupted('x+2yw^3zw') == False
-    assert alpha_group_interrupted('a2') == False
-    assert alpha_group_interrupted('a 2 + a 3') == False
-    assert alpha_group_interrupted('x1y1z1w1') == False
-    assert alpha_group_interrupted('3.7x+y/3.7') == False
-    assert alpha_group_interrupted('x1+x2+x3+x4+x5') == False
-
-    assert alpha_group_interrupted('x23yz') == True
-    assert alpha_group_interrupted('xyzw1234') == True
-
-    assert alpha_group_interrupted('xy 23 5 w') == False  # function does not clear whitespaces on its own
-
-
 def test_invalid_alpha_group():
     assert invalid_alpha_group('') == False
     assert invalid_alpha_group('198+125x') == False
@@ -90,6 +71,7 @@ def test_invalid_alpha_group():
     assert invalid_alpha_group('(x+y+z+w)^4 + logxyzw') == True
 
     assert invalid_alpha_group('123xyzt+ 88abc de +8x^3') == False  # function does not clear whitespaces on its own
+    assert invalid_alpha_group('xysqrt(xy)') == False
 
 
 def test_bad_placement_of_specials():
@@ -133,17 +115,28 @@ def test_bad_placement_of_specials():
     assert bad_placement_of_specials('{{}}') == True
     assert bad_placement_of_specials('{x<5}{y<5}') == False
 
-    # separators and curly brackets not allowed within round or square parentheses
-    assert bad_placement_of_specials('exp(x,y)') == True
-    assert bad_placement_of_specials('exp(x;y)') == True
-    assert bad_placement_of_specials('exp(x + 3 & y)') == True
-    assert bad_placement_of_specials('exp(x + {3} y)') == True
-    assert bad_placement_of_specials('log[x + 3 , y]') == True
-    assert bad_placement_of_specials('log[x + 3 , y]') == True
+    # specials that are not allowed within round parentheses
+    assert bad_placement_of_specials('f(x,y)=3') == False
+    assert bad_placement_of_specials('f(x;y)=3') == True
 
-    assert bad_placement_of_specials('log[x + 3y]{x>0}') == False
-    assert bad_placement_of_specials('log[x + 3y],{x>0}') == False
-    assert bad_placement_of_specials('log[x + 3y],{x>0,y>0}') == False
+    assert bad_placement_of_specials('exp(x,y)') == False
+    assert bad_placement_of_specials('exp(3 & 5)') == True
+    assert bad_placement_of_specials('exp(35) & log(21)') == False
+    assert bad_placement_of_specials('exp(x;y)') == True
+    assert bad_placement_of_specials('exp(xy) & log (x+y)') == False
+    assert bad_placement_of_specials('exp(x ; y)') == True
+    assert bad_placement_of_specials('exp(x{x<5})') == True
+    assert bad_placement_of_specials('exp(x){x<5}') == False
+    assert bad_placement_of_specials('exp(x{y})') == True
+
+    # specials that are not allowed within square parentheses
+    assert bad_placement_of_specials('log([1,2,3])') == False
+    assert bad_placement_of_specials('log([1,2,3 & 5])') == True
+    assert bad_placement_of_specials('log([1,2,3, 5]) & exp([1])') == False
+    assert bad_placement_of_specials('[1,2,3;4,5,6;7,8,9]') == False
+    assert bad_placement_of_specials('[3x,3y,x^{y+3}]') == True
+    assert bad_placement_of_specials('[3x,3y,x^(y+3)]') == False
+    assert bad_placement_of_specials('[3x,3y,x^(y+3)]{xy<3,x%3=2}') == False
 
     # wrong placements of '_', '.', '\'' or '`'
     assert bad_placement_of_specials('xyz.w') == True
@@ -205,9 +198,50 @@ def test_bad_placement_of_specials():
     # general
     assert bad_placement_of_specials('exp(x_1)+log[y_1]{x<3.7}{y<3.8},(sqrt(a))\';(x_3^2)`=0 & a=7') == False
 
+def test_invalid_func_arguments():
+    assert invalid_func_args('log(3)') == False
+    assert invalid_func_args('log[3]') == True
+    assert invalid_func_args('log{3}') == True
+    assert invalid_func_args('log([3])') == True
+    assert invalid_func_args('log([1,2,3])') == True
+    assert invalid_func_args('log3(5)') == True
+    assert invalid_func_args('log(x<5)') == True
+    assert invalid_func_args('log(x)<5') == False
+    assert invalid_func_args('log(x)=5') == False
+    assert invalid_func_args('log(x,y)') == True
+    assert invalid_func_args('log(x;y)') == True
+    assert invalid_func_args('log(x&y)') == True
+    assert invalid_func_args('exp(x + 3y {x<y})') == True
+    assert invalid_func_args('log(exp(sqrt(sin(cos(x)))))') == False
+    assert invalid_func_args('1+log(1+exp(1+sqrt(1+sin(1+cos(x)))))') == False
+    assert invalid_func_args(' 1 + log( 1 + exp( 1 + sqrt( 1 + sin( 1 + cos( x )))))') == False
+
+def test_incorrect_character_order():
+
+    # alpha group interrupted by more than or 2 digits
+    assert incorrect_character_order('') == False
+    assert incorrect_character_order('xyz') == False
+    assert incorrect_character_order('xyz w+') == False
+    assert incorrect_character_order('xyz w  %') == False
+    assert incorrect_character_order('x / y / z /  w  %') == False
+    assert incorrect_character_order('x+2yw^3zw') == False
+    assert incorrect_character_order('a2') == False
+    assert incorrect_character_order('a 2 + a 3') == False
+    assert incorrect_character_order('x1y1z1w1') == False
+    assert incorrect_character_order('3.7x+y/3.7') == False
+    assert incorrect_character_order('x1+x2+x3+x4+x5') == False
+    assert incorrect_character_order('x23yz') == True
+    assert incorrect_character_order('xyzw1234') == True
+    assert incorrect_character_order('xy 23 5 w') == False  # function does not clear whitespaces on its own
+
+    # 'x+=3'
+
+    # 'x+(=3)'
+
+    # 'x(=2)'
 
 def test_valid_string_input():
-    # general
+    # general equations
     assert valid_string_input('') == False
     assert valid_string_input('       ') == False
     assert valid_string_input('x+3') == True
@@ -217,6 +251,10 @@ def test_valid_string_input():
     assert valid_string_input('0 <= ax^3+bx^2+cx+d <= (log(x) + exp(x) + sqrt(x))^(x^x)') == True
     assert valid_string_input('0 <= ax^3+bx^2+cx+d <= (log(x) + exp(x) + sqrt(x))^(x^x)'.upper()) == True
     assert valid_string_input('13x_1x_2x_3x_4x_5x_6+19x^4+x_3%11') == True
+
+    """
+    ------------group by functionality------------
+    """
 
     # expression ends with a sign
     assert valid_string_input('+') == False
@@ -249,7 +287,6 @@ def test_valid_string_input():
     assert valid_string_input('x>=y>=z>=w>=t') == True
 
     # non-supported special characters
-    # assert valid_string_input('exp(x_1)+log[y_1]{x<3.7}{y<3.8},(sqrt(a))\';(x_3^2)`=0 & a=7') == True
     assert valid_string_input('$$ x<3 $$ @! ') == False
 
     # too many consecutive letters not in funcs
@@ -276,7 +313,41 @@ def test_valid_string_input():
     assert valid_string_input('xyzw1234') == False
     assert valid_string_input('xy 23 5 w') == False
 
-    # general
+    """
+    ------------group by character order------------
+    """
+
+    # signs
+    assert valid_string_input('+') == False
+    assert valid_string_input('    +') == False
+    assert valid_string_input('+     ') == False
+    assert valid_string_input('-') == False
+    assert valid_string_input('*') == False
+    assert valid_string_input('/') == False
+    assert valid_string_input('^') == False
+    assert valid_string_input('%') == False
+
+    # relationals
+    assert valid_string_input('<') == False
+    assert valid_string_input('>') == False
+    assert valid_string_input('=') == False
+    assert valid_string_input('<=') == False
+    assert valid_string_input('>=') == False
+
+    # alphas
+
+    # nums
+
+    # specials
+
+    # parentheses
+
+    # round-robin
+
+    assert valid_string_input('x+=3') == False
+    assert valid_string_input('x+(=3)') == False
+    assert valid_string_input('x(=2)') == False
+
 
 if __name__ == '__main__':
     pass

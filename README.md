@@ -1,14 +1,21 @@
 # mathematX
-make mathematics great again
 
-2D space
+Visualizer app for mathematical functions 
 
-3D space for functions
+Functionality ideas:
 
-3D space for designing surfaces (first person)
+- Natural mathematical language [in progress]
 
-expression analysis - partial derivatives, roots, plot if less than 3 vars 
+- 2D space
 
-planar system phase portraits
+- 3D space for functions
 
-euler circle
+- 3D space for designing surfaces 
+
+- expression analysis - partial derivatives, roots, plot if less than 3 vars 
+
+- differential equations
+
+- planar system phase portraits
+
+- euler circle

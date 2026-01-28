@@ -9,16 +9,20 @@ specials = ('_', '.') + operands + separators + parentheses
 # TODO: define code errors to let the user know his mistake
 
 """
- (separate functions and order of operations)
- {conditions}
- [separate functions and order of operations]] 
- _ subscript
- , separate equations
- . float numbers
- ; separate equations
- ' derivatives
- ` derivatives
- & separate equations 
+    Round parentheses ()
+        order of operations
+        specify argument of a function - user defined or predefined funcs
+    Square brackets []
+        define vectors, matrices, vector valued functions
+    Curly brackets {}
+        specify conditions for an expression
+    _ subscript
+    , separate equations, separate elements of vectors, separate variables for multivariable calc
+    . float numbers
+    ; separate equations, new row in matrix
+    ' derivatives
+    ` derivatives
+    & separate equations 
 """
 
 
@@ -31,8 +35,7 @@ def parenthesis_levels(s: str, left: str, right: str) -> str:
     Creates a string that keeps all the parentheses of a string, specified by left and right;
     Replace all non-parenthesis characters with the current level;
     Level starts as zero, increments for left parenthesis, decrements for right parenthesis.
-    Changed functionality relative to the .png file: after every parenthesis, the level is
-    appended to the string, in order to catch invalid cases like ')('.
+    After every parenthesis, the level is appended to the string, in order to catch invalid cases like ')('.
 
     :param s: input string
     :param left: left parenthesis
@@ -84,25 +87,6 @@ def consecutive_relationals(s: str) -> bool:
     return False
 
 
-def alpha_group_interrupted(s: str) -> bool:
-    """
-    search for sequences of alpha characters, that may be interrupted;
-    they can represent a product of variables (e.g. 'xyz') or a function (e.g. 'log');
-    interruptions can be digits or points (e.g. 'x23y', 'xy.z').
-    A sequence with one digit after an alpha will be allowed in order to handle subscripts more naturally.
-
-    :param s: input string
-    :return: bool value indicating whether any set of consecutive alpha characters was interrupted
-    """
-    if len(s) <= 2:
-        return False
-    for i in range(len(s) - 2):
-        if s[i].isalpha():
-            if s[i + 1].isdigit() and s[i + 2].isdigit():
-                return True
-    return False
-
-
 def invalid_alpha_group(s: str) -> bool:
     """
     search for sequences of consecutive alpha characters that exceed the limit;
@@ -112,6 +96,7 @@ def invalid_alpha_group(s: str) -> bool:
     :param s: input string
     :return: bool value indicating an alpha sequence which exceeds the limit
     """
+    # prevent smashing your head on the keyboard :)
     consecutive_alpha_lim = 4
     tmp_str = ""
     cnt = 0
@@ -120,7 +105,8 @@ def invalid_alpha_group(s: str) -> bool:
             tmp_str += s[i]
             cnt += 1
         else:
-            if cnt > consecutive_alpha_lim and tmp_str not in funcs:  # smash your head on the keyboard
+            if cnt > consecutive_alpha_lim and not [func for func in funcs if tmp_str.find(func) != -1]:
+                # check if any of the functions in funcs appears in tmp_str
                 return True
             cnt = 0
             tmp_str = ""
@@ -170,14 +156,16 @@ def bad_placement_of_specials(s: str) -> bool:
         return True
 
     # the following line of code should be False if the execution reached here
+    # (uncomment for debug)
     # len(p_levels_round) != len(s_round) or len(p_levels_square) != len(s_square):
 
-    # separators and curly brackets not allowed within round or square parentheses
+    # specials that are not allowed within round parentheses
     for i in range(len(s_round)):
-        if s_round[i] in (',', ';', '&', '{', '}') and p_levels_round[i] != '0':
+        if s_round[i] in (';', '&', '{', '}') and p_levels_round[i] != '0':
             return True
+    # specials that are not allowed within square parentheses
     for i in range(len(s_square)):
-        if s_square[i] in (',', ';', '&', '{', '}') and p_levels_square[i] != '0':
+        if s_square[i] in ('&', '{', '}') and p_levels_square[i] != '0':
             return True
 
     # wrong placements of '_', '.', '\'' or '`'
@@ -214,6 +202,69 @@ def bad_placement_of_specials(s: str) -> bool:
     return False
 
 
+def incorrect_character_order(s:str) -> bool:
+    """
+    Detection of undesired order of characters.
+
+    Case 1: interruption of alpha sequence by at least 2 consecutive digits(e.g. 'x23y');
+    Note 1: one digit is required for handling subscripts (e.g. 'x1' instead of 'x_1');
+
+    Case 2:
+
+    #TODO continue
+    :param s: input string
+    :return: boolean value specified in doc
+    """
+    # include alpha_group_interrupted functionality here
+    # together with the 3 edge cases already found
+    # think of others, use permutations with classes of chars
+
+    # TODO integrate:
+    # code for alpha sequence interrupted
+
+    # if len(s) <= 2:
+    #     return False
+    # for i in range(len(s) - 2):
+    #     if s[i].isalpha():
+    #         if s[i + 1].isdigit() and s[i + 2].isdigit():
+    #             return True
+    # return False
+
+    pass
+
+
+def invalid_func_args(s: str) -> bool:
+    """
+    search for functions in the input string and check whether content is valid;
+    the string inside the function must be an expression i.e. it cannot contain
+    separators, relational operators, square or curly brackets.
+
+    :param s: input string
+    :return: boolean value specified in doc
+    """
+
+    p_levels_round = parenthesis_levels(s, '(', ')')
+    s_round = s.replace("(", "( ")
+    s_round = s_round.replace(")", ") ")
+
+    tmp_str = ''
+    for i in range(len(s_round) - 1):
+        if s_round[i].isalpha():
+            tmp_str += s_round[i]
+            if tmp_str in funcs:  # search for functions in the string
+                if s_round[i + 1] != '(':  # make sure the functions have their arguments within parentheses
+                    return True
+                # get argument string by searching for the corresponding right parenthesis
+                end_index = i + 1 + p_levels_round[(i + 1):].index(p_levels_round[i]) - 1  # right parenthesis index
+                argument = s_round[(i + 2):end_index]
+                for ch in argument:
+                    if ch in separators + relationals + ('[', ']', '{', '}'):
+                        return True
+        else:
+            tmp_str = ''
+    return False
+
+
 def valid_string_input(s: str) -> bool:
     """
     takes the raw input string and checks all validity conditions;
@@ -234,16 +285,14 @@ def valid_string_input(s: str) -> bool:
     if consecutive_signs(s_stripped):  # 2 consecutive signs (except +-)
         return False
 
+    if s_stripped[0] in relationals or s_stripped[-1] in relationals: # incomplete equality/inequality
+        return False
+
     if consecutive_relationals(s_stripped):  # 2 forbidden consecutive relational operators
         return False
 
-    if [ch for ch in s_stripped if not ch.isalnum() and ch not in specials
-                                   and ch not in signs and ch not in relationals]:
+    if [ch for ch in s_stripped if not ch.isalnum() and ch not in specials + signs + relationals]:
         # non-supported characters
-        return False
-
-    if alpha_group_interrupted(s_stripped):  # alpha groups are interrupted  (e.g. 'x23y' 'xy.z' )
-        # strings like 'x1' will be allowed as a subscript typo
         return False
 
     if invalid_alpha_group(s_stripped):  # limit exceeded for consecutive letters not in funcs
@@ -251,6 +300,9 @@ def valid_string_input(s: str) -> bool:
 
     if bad_placement_of_specials(s_stripped):
         # any sort of bad placement of characters ('_', ',', '.', ';', '\'', '`', '&')
+        return False
+
+    if invalid_func_args(s_stripped):
         return False
 
     return True
@@ -280,6 +332,8 @@ def split_expression(s: str) -> list[str]:
     # int/integral keyword
     # curly brackets placement define rule?
     # check redundant parentheses
+    # xysqrt(xy) vs xy sqrt(xy)
+    # negative powers
 
     # 1. define variables, can you define variables?, validate the sanity of the expression(?)
     # 2. separators () {} , ; & and => multiple expressions
